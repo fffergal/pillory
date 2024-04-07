@@ -10,7 +10,6 @@ import pathlib
 import sys
 from collections.abc import Iterator
 
-
 # Excludes taken from ruff.
 EXCLUDE = [
     ".bzr",
