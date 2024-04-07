@@ -28,7 +28,7 @@ python -m pillory 'tests/**/test_*.py'
 
 ### Rules
 
-*PM101 patched implementation*
+**PM101 patched implementation**
 : You patched the implementation of a class or function instead of where it is
 imported to in the module under test. e.g. "parsers.Parser" where Parser is
 defined instead of "__main__.Parser" where it is used. This means you may not
@@ -41,12 +41,12 @@ docs][stdlibdocs], but there is an [even better article by Ned
 Batchelder][nedbat] explaining how it works and the additional problems with
 test isolation.
 
-*PM102 patched is not a top level module attribute*
+**PM102 patched is not a top level module attribute**
 : You patched something like a method on a class. Because class methods can't be
 imported by themselves, this means all uses of the class will be affected, not
 just the module under test.
 
-*PM103 patched builtins*
+**PM103 patched builtins**
 : You patched the builtins module instead of the built-in function in the module
 under test. Built-ins are actually added to every module and that's where they
 should be patched, to avoid similar issues to patching the implementation. There
@@ -63,6 +63,7 @@ and it still has problems with test isolation.
 * No console script entry point (pillory command), have to use with python -m.
 * Only takes one path or glob.
 * No config file support.
+* No comments to ignore rules.
 * Not fast.
 * Must import modules. Doesn't work well with frameworks like Django that
   require special setup for things like settings before importing.
