@@ -2,12 +2,13 @@
 A linter to scrutinize how you are using mocks in Python.
 """
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 
 import ast
 import importlib
 import pathlib
 import sys
+import types
 from collections.abc import Iterator
 
 # Excludes taken from ruff.
@@ -56,6 +57,8 @@ class MockImportVisitor(ast.NodeVisitor):
     def visit_Call(self, node):
         if isinstance(node.func, ast.Name) and node.func.id == "patch":
             self.patches.append(node)
+        elif isinstance(node.func, ast.Attribute) and node.func.attr == "patch":
+            self.patches.append(node)
 
 
 def import_or_getattr(target, current=None):
@@ -76,6 +79,34 @@ def import_or_getattr(target, current=None):
     return found
 
 
+RULE_MESSAGES = {
+    "PM101": "patched implementation",
+    "PM102": "patched is not a top level module attribute",
+    "PM103": "patched builtins instead of module under test",
+}
+
+
+def find_errors(source):
+    try:
+        parsed = ast.parse(source)
+    except Exception:
+        return
+    visitor = MockImportVisitor()
+    visitor.visit(parsed)
+    for node in visitor.patches:
+        arg = node.args[0].value
+        target, attribute = arg.rsplit(".", 1)
+        if target == "builtins":
+            yield ("PM103", node.lineno, node.col_offset, arg)
+            continue
+        value = import_or_getattr(target)
+        patched = getattr(value, attribute)
+        if not isinstance(value, types.ModuleType):
+            yield ("PM102", node.lineno, node.col_offset, arg)
+        elif patched.__module__ == target:
+            yield ("PM101", node.lineno, node.col_offset, arg)
+
+
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] != ".":
         starting_files = list(pathlib.Path(".").glob(sys.argv[1]))
@@ -85,25 +116,9 @@ if __name__ == "__main__":
     for file in files:
         try:
             source = file.read_text()
-            parsed = ast.parse(source, filename=str(file))
         except Exception:
             continue
-        visitor = MockImportVisitor()
-        visitor.visit(parsed)
-        for node in visitor.patches:
-            arg = node.args[0].value
-            target, attribute = arg.rsplit(".", 1)
-            if target == "builtins":
-                print(
-                    f"{str(file)}:{node.lineno}:{node.col_offset}: PM103 patched builtins instead of module under test {arg}"
-                )
-            module = import_or_getattr(target)
-            patched = getattr(module, attribute)
-            if not hasattr(patched, "__module__"):
-                print(
-                    f"{str(file)}:{node.lineno}:{node.col_offset}: PM102 patched is not a top level module attribute {arg}"
-                )
-            elif patched.__module__ == target:
-                print(
-                    f"{str(file)}:{node.lineno}:{node.col_offset}: PM101 patched implementation of {arg}"
-                )
+        for rule_code, lineno, col_offset, arg in find_errors(source):
+            print(
+                f"{file}:{lineno}:{col_offset}: {rule_code} {RULE_MESSAGES[rule_code]} {arg}"
+            )
