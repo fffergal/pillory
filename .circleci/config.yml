@@ -4,21 +4,18 @@ orbs:
   python: circleci/python@2.1.1
 
 jobs:
-  lint:
+  test:
     executor:
         name: python/default
         tag: "3.10"
     steps:
       - checkout
-      - python/install-packages:
-          pip-dependency-file: dev-requirements.txt
-          pkg-manager: pip
       - run:
-          name: ruff
-          command: ruff check
+          name: unit tests
+          command: python test_pillory.py -v
       - run:
-          name: ruff format
-          command: ruff format --check
+          name: example tests
+          command: python test_example.py -v
 
   publish:
     executor:
@@ -34,12 +31,12 @@ jobs:
           command: flit publish
 
 workflows:
-  lint-and-publish:
+  test-and-publish:
     jobs:
-      - lint
+      - test
       - publish:
           requires:
-            - lint
+            - test
           filters:
             branches:
               only: main
