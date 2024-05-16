@@ -57,6 +57,12 @@ class PilloryTestCase(unittest.TestCase):
             ("example/__init__.py", "missing"),
         )
 
+    def test_find_importable_module(self):
+        self.assertEqual(
+            pillory.find_importable("use.do_something", ["example"]),
+            ("example/use.py", "do_something"),
+        )
+
     def test_find_module_definitions(self):
         self.assertEqual(
             list(
