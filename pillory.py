@@ -1,10 +1,11 @@
 """A linter to scrutinize how you are using mocks in Python."""
 
-__version__ = "1.1.1"
+__version__ = "1.1.2"
 
 # pyright: strict
 
 import ast
+import logging
 import pathlib
 import sys
 from collections.abc import Iterator
@@ -175,7 +176,9 @@ def find_package_definitions(package_path: str):
             yield item.name
 
 
-def find_errors(patches: list[ast.Call]) -> Iterator[tuple[str, int, int, str]]:
+def find_errors(
+    patches: list[ast.Call], file: str
+) -> Iterator[tuple[str, int, int, str]]:
     """
     Decide whether each patch call has errors or not.
 
@@ -185,16 +188,41 @@ def find_errors(patches: list[ast.Call]) -> Iterator[tuple[str, int, int, str]]:
 
     This function won't import any modules, but it will search the file system and
     ast.parse files to decide whether the right thing was patched or not.
+
+    file is just used for logging.
     """
+    logger = logging.getLogger(__name__)
     for node in patches:
         args = node.args
         if len(args) == 0:
+            logger.debug(
+                "%s:%s:%s: patch call with no args", file, node.lineno, node.col_offset
+            )
             continue
         first_arg = args[0]
         if not isinstance(first_arg, ast.Constant):
+            logger.debug(
+                "%s:%s:%s: patch arg not a constant", file, node.lineno, node.col_offset
+            )
             continue
         name = first_arg.value
         if not isinstance(name, str):
+            logger.debug(
+                "%s:%s:%s: patch arg not a str (%s)",
+                file,
+                node.lineno,
+                node.col_offset,
+                repr(name),
+            )
+            continue
+        if "." not in name:
+            logger.debug(
+                "%s:%s:%s: patch arg not an import name (%s)",
+                file,
+                node.lineno,
+                node.col_offset,
+                repr(name),
+            )
             continue
         if name.split(".", 1)[0] == "builtins":
             yield ("PM103", node.lineno, node.col_offset, name)
@@ -202,7 +230,17 @@ def find_errors(patches: list[ast.Call]) -> Iterator[tuple[str, int, int, str]]:
             # possible for there to be more errors on the same line, we don't check for
             # them because it would need special handling.
             continue
-        source_path, remaining = find_importable(name, sys.path)
+        try:
+            source_path, remaining = find_importable(name, sys.path)
+        except (LookupError, ValueError):
+            logger.debug(
+                "%s:%s:%s: could not find %s in sys.path",
+                file,
+                node.lineno,
+                node.col_offset,
+                name,
+            )
+            continue
         if "." in remaining:
             yield ("PM102", node.lineno, node.col_offset, name)
         source_path = pathlib.Path(source_path)
@@ -249,7 +287,7 @@ def main(argv: list[str]):
             continue
         visitor = MockImportVisitor()
         visitor.visit(parsed_module)
-        errors = find_errors(visitor.patches)
+        errors = find_errors(visitor.patches, str(file))
         for rule_code, lineno, col_offset, arg in errors:
             print(format_message(str(file), lineno, col_offset, rule_code, arg))
 
