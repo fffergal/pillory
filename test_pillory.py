@@ -44,41 +44,40 @@ class PilloryTestCase(unittest.TestCase):
 
     def test_find_importable(self):
         self.assertEqual(
-            pillory.find_importable("example.use.Hey", ["."]), ("example/use.py", "Hey")
+            pillory.find_importable("example.use.Hey", (".",)),
+            ("example/use.py", "Hey"),
         )
 
     def test_find_importable_empty(self):
         self.assertEqual(
-            pillory.find_importable("example.empty", ["."]), ("example", "empty")
+            pillory.find_importable("example.empty", (".",)), ("example", "empty")
         )
 
     def test_find_importable_missing(self):
         self.assertEqual(
-            pillory.find_importable("example.missing", ["."]),
+            pillory.find_importable("example.missing", (".",)),
             ("example/__init__.py", "missing"),
         )
 
     def test_find_importable_module(self):
         self.assertEqual(
-            pillory.find_importable("use.do_something", ["example"]),
+            pillory.find_importable("use.do_something", ("example",)),
             ("example/use.py", "do_something"),
         )
 
     def test_find_module_definitions(self):
         self.assertEqual(
-            list(
-                pillory.find_module_definitions(
-                    cleandoc(
-                        """
-                        def hey():
-                            pass
+            pillory.find_module_definitions(
+                cleandoc(
+                    """
+                    def hey():
+                        pass
 
-                        class Yo:
-                            pass
+                    class Yo:
+                        pass
 
-                        WOT = 1
-                        """
-                    )
+                    WOT = 1
+                    """
                 )
             ),
             ["hey", "Yo", "WOT"],
