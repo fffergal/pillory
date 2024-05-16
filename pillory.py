@@ -1,6 +1,6 @@
 """A linter to scrutinize how you are using mocks in Python."""
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 
 # pyright: strict
 
@@ -115,6 +115,9 @@ def find_importable(name: str, sys_path: list[str]) -> tuple[str, str]:
         package_dir = path / first
         if package_dir.is_dir():
             break
+        module_file = package_dir.with_suffix(".py")
+        if module_file.exists():
+            return (str(module_file), rest)
     else:  # no break
         raise LookupError(f"import {name} not found")
     parts = rest.split(".")
