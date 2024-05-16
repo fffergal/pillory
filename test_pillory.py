@@ -36,6 +36,7 @@ class PilloryTestCase(unittest.TestCase):
                             col_offset=0,
                         )
                     ],
+                    "hey.py",
                 )
             ),
             [("PM103", 1, 0, "builtins.open")],
