@@ -66,8 +66,6 @@ and it still has problems with test isolation.
 * No config file support.
 * No comments to ignore rules.
 * Not fast.
-* Must import modules. Doesn't work well with frameworks like Django that
-  require special setup for things like settings before importing.
 * Globs have to be relative to the current directory.
 * No further explanations for the errors.
 * No pretty error handling, just tracebacks.
@@ -124,3 +122,21 @@ doctest to easily check the outputs. You can run them with:
 ```
 python test_example.py -v
 ```
+
+To run all the different tests and see the coverage given you can use:
+
+```
+make
+```
+
+The default make target is the coverage report in HTML format. You can look at
+the file in a browser, or if you don’t want to leave the terminal but still want
+a line by line coverage report, you can use [browsh][browsh] as your browser.
+You can run the tests, start a HTTP server, and view the report in browsh with
+this oneliner:
+
+```
+( make && cd build/htmlcov && python -m http.server 8081 &>/dev/null & browsh http://localhost:8081 ; kill $! )
+```
+
+[browsh]: https://www.brow.sh
