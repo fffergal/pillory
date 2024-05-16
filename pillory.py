@@ -1,14 +1,16 @@
 """A linter to scrutinize how you are using mocks in Python."""
 
-__version__ = "1.1.2"
+__version__ = "1.1.3"
 
 # pyright: strict
 
 import ast
+import functools
 import logging
 import pathlib
 import sys
-from collections.abc import Iterator
+import typing
+from collections.abc import Callable, Iterator
 
 # Excludes taken from ruff.
 EXCLUDE = [
@@ -85,12 +87,14 @@ RULE_MESSAGES = {
 }
 
 
-def find_importable(name: str, sys_path: list[str]) -> tuple[str, str]:
+@functools.lru_cache
+def find_importable(name: str, sys_path: tuple[str]) -> tuple[str, str]:
     """
     Split the full name of a Python object into importable file and remaining parts.
 
-    The sys_path is a list of directories to search for the importable file, basically
-    sys.path, but you have to pass it in to make testing easier.
+    The sys_path is a tuple of directories to search for the importable file, basically
+    sys.path, but you have to pass it in to make testing easier. It must be a tuple
+    instead of a list so the args work with lru_cache.
 
     For example the address for the method "wot" of the class "Hey" in the module "yo"
     would be "yo.Hey.wot". If "." is in sys_path and "yo.py" is in the working
@@ -139,6 +143,27 @@ def find_importable(name: str, sys_path: list[str]) -> tuple[str, str]:
     raise LookupError(f"import {name} not found")
 
 
+P = typing.ParamSpec("P")
+T = typing.TypeVar("T")
+
+
+def listify(f: Callable[P, Iterator[T]]) -> Callable[P, list[T]]:
+    """
+    Convert a generator function to one that returns a list.
+
+    This is important when combined with lru_cache, as we don't want to cache a
+    reference to the same generator that has already been consumed.
+    """
+
+    @functools.wraps(f)
+    def wrapper(*args: P.args, **kwargs: P.kwargs):
+        return list(f(*args, **kwargs))
+
+    return wrapper
+
+
+@functools.lru_cache
+@listify
 def find_module_definitions(source: str) -> Iterator[str]:
     """
     Find the names of objects defined in a module, not imported.
@@ -158,6 +183,8 @@ def find_module_definitions(source: str) -> Iterator[str]:
                     yield target.id
 
 
+@functools.lru_cache
+@listify
 def find_package_definitions(package_path: str):
     """
     Find the names of other modules and packages defined in a package.
@@ -191,6 +218,7 @@ def find_errors(
 
     file is just used for logging.
     """
+    tuple_sys_path = tuple(sys.path)
     logger = logging.getLogger(__name__)
     for node in patches:
         args = node.args
@@ -231,7 +259,7 @@ def find_errors(
             # them because it would need special handling.
             continue
         try:
-            source_path, remaining = find_importable(name, sys.path)
+            source_path, remaining = find_importable(name, tuple_sys_path)
         except (LookupError, ValueError):
             logger.debug(
                 "%s:%s:%s: could not find %s in sys.path",
@@ -279,6 +307,8 @@ def main(argv: list[str]):
         try:
             source = file.read_text()
         except Exception:
+            continue
+        if "patch(" not in source:
             continue
         visitor = MockImportVisitor()
         try:
