@@ -1,6 +1,6 @@
 """A linter to scrutinize how you are using mocks in Python."""
 
-__version__ = "1.1.3"
+__version__ = "1.1.4"
 
 # pyright: strict
 
