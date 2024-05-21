@@ -14,6 +14,14 @@ Install from PyPI with pip:
 pip install pillory
 ```
 
+Pillory needs to be able to find your code and its dependencies _as if_ it were
+importing it (but it doesn’t actually import it). This means you need to install
+any other dependencies and set up your environment as if you were going to run
+your tests. How you do this can vary between projects, but could include making
+a virtualenv, `pip install -r requirements.txt`, and `pip install -e .`. If you
+don’t do this pillory will find fewer errors than it should, or maybe find
+no errors at all, a misleading positive result.
+
 Run pillory on the current directory:
 
 ```
@@ -31,12 +39,12 @@ python -m pillory 'tests/**/test_*.py'
 **PM101 patched implementation**
 : You patched the implementation of a class or function instead of where it is
 imported to in the module under test. e.g. "parsers.Parser" where Parser is
-defined instead of "__main__.Parser" where it is used. This means you may not
+defined instead of "app.Parser" where it is used. This means you may not
 have affected the module under test at all, or you have replaced the target in a
 way which will affect other code that uses it, which is bad for test isolation
-(making sure tests don't affect other tests, and that each test tests what is
-intended and don't change how other parts of the code work). There is a warning
-about not affecting the right module in the [Python Standard Library
+(making sure tests don't affect other tests, each test tests only what it
+intends to, and doesn’t rely on how other parts of the code work). There is a
+warning about not affecting the right module in the [Python Standard Library
 docs][stdlibdocs], but there is an [even better article by Ned
 Batchelder][nedbat] explaining how it works and the additional problems with
 test isolation.
