@@ -1,9 +1,10 @@
 """A linter to scrutinize how you are using mocks in Python."""
 
-__version__ = "1.1.4"
+__version__ = "2.0.0"
 
 # pyright: strict
 
+import argparse
 import ast
 import functools
 import logging
@@ -293,17 +294,28 @@ def format_message(path: str, lineno: int, col_offset: int, rule_code: str, arg:
     return f"{path}:{lineno}:{col_offset}: {rule_code} {RULE_MESSAGES[rule_code]} {arg}"
 
 
+def make_arg_parser() -> argparse.ArgumentParser:
+    """Create an argument parser for the command line interface."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "path",
+        nargs="*",
+        default=(".",),
+        help="The files to lint. Directories are searched recursively. The default is the current directory.",
+    )
+    return parser
+
+
 def main(argv: list[str]):
     """
     Find files, parse them, and print output.
 
     This should be used from an if __name__ == "__main__" block and passed sys.argv.
     """
-    if len(argv) > 1 and argv[1] != ".":
-        start_dir = argv[1]
-    else:
-        start_dir = "."
-    for file in walk_path(pathlib.Path(start_dir)):
+    arg_parser = make_arg_parser()
+    args = arg_parser.parse_args(argv[1:])
+    files = [file for path in args.path for file in walk_path(pathlib.Path(path))]
+    for file in files:
         try:
             source = file.read_text()
         except Exception:

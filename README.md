@@ -28,10 +28,10 @@ Run pillory on the current directory:
 python -m pillory
 ```
 
-Or give a specific file, directory, or glob:
+Or give a specific files and directories:
 
 ```
-python -m pillory 'tests/**/test_*.py'
+python -m pillory tests/ test_example.py
 ```
 
 ### Rules
@@ -67,14 +67,12 @@ and it still has problems with test isolation.
 
 ## Known issues
 
-* No --help text.
 * No console script entry point (pillory command), have to use with python -m.
-* Only takes one path or glob.
+* Does not have a non-zero exit code when errors found.
 * Only tested with Python 3.10.
 * No config file support.
 * No comments to ignore rules.
 * Not fast.
-* Globs have to be relative to the current directory.
 * No further explanations for the errors.
 * No pretty error handling, just tracebacks.
 * Will error when mocking something in the module under test, which is arguably
